@@ -1,0 +1,476 @@
+{% extends "SkillFlowAI/layout.html" %}
+{% load static %}
+
+{% block headers %}
+    <link rel="stylesheet" href="{% static 'SkillFlowAI/styles.css' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* Global Styles */
+        * {
+            box-sizing: border-box;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Align content similar to login page */
+        .content-wrapper {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 90vh;
+            margin-top: 50px;
+            width: 100%;
+        }
+
+        /* Navbar */
+        .navbar {
+            background-color: #FFFFFF;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 15px 40px; /* Increase horizontal padding */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        /* Chat Container */
+        #chat-container, #job-results, .container {
+            width: 95%;
+            max-width: 900px;
+        }
+        #chat-container {
+            height: 350px;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: #FFFFFF;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid #DDDDDD;
+            margin-top: 0px;
+        }
+
+        /* Messages */
+        .message {
+            max-width: 80%;
+            padding: 12px;
+            border-radius: 12px;
+            margin: 5px 0;
+            display: inline-block;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            font-size: 15px;
+            font-weight: 500;
+            font-family: 'Poppins', sans-serif;
+        }
+        .user-message {
+            background-color: #252525;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 0;
+        }
+        .ai-message {
+            background-color: #F4F4F6;
+            color: #252525;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+        }
+
+        /* Job Results */
+        #job-results {
+            height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #FFFFFF;
+            border: 1px solid #DDDDDD;
+            border-radius: 10px;
+            box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Buttons */
+        .btn-primary, .btn-success {
+            background-color: #252525;
+            border: none;
+            transition: background 0.3s ease;
+        }
+        .btn-primary:hover, .btn-success:hover {
+            background-color: #3B3B3B;
+        }
+        .btn-danger {
+            background-color: #C9302C;
+            border: none;
+            transition: background 0.3s ease;
+        }
+        .btn-danger:hover {
+            background-color: #A8201C;
+        }
+
+        /* Form Styling */
+        .form-control {
+            background: #FFFFFF;
+            color: #252525;
+            border: 1px solid #CCCCCC;
+        }
+        .form-control:focus {
+            background: #FFFFFF;
+            border-color: #252525;
+            box-shadow: none;
+        }
+        #job-results {
+            min-height: 1000px;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+{% if user.is_authenticated %}
+<div class="content-wrapper">
+    <div id="chat-container"></div>
+
+    <div class="container mt-3" id="input-container">
+        <div class="row g-2">
+            <div class="col-md-8">
+                <input type="text" id="user-input" class="form-control" placeholder="Type a message...">
+            </div>
+            <div class="col-md-4 d-flex gap-2">
+                <button class="btn w-100 btn-primary" id="send-button" {% if not resumeUploaded %} disabled {% endif %} onclick="sendMessage()">
+                    {% if not resumeUploaded %} Upload Resume to Enable {% else %} Send {% endif %}
+                </button>
+                <button class="btn btn-danger w-100" onclick="clearChatHistory()">Clear History</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3" id="file-upload-container">
+        <div class="row g-2">
+            <div class="col-md-8">
+                <input type="file" id="file-input" class="form-control">
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-success w-100" onclick="uploadFile()">Upload</button>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-12">
+                <p id="file-upload-messaging" class="text-center {% if resumeUploaded %} text-success {% else %} text-danger {% endif %}">
+                    {% if resumeUploaded %}
+                        Resume was uploaded and exists! You can send messages.
+                    {% else %}
+                        You must upload a resume before sending messages.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div id="job-results">
+        <h4 class="fw-bold">AI-Recommended Job Matches</h4>
+        <div id="job-listings"></div>
+    </div>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", async function () {
+        await loadChatHistory();
+    });
+
+    async function loadChatHistory() {
+        let chatContainer = document.getElementById("chat-container");
+        let jobListingsContainer = document.getElementById("job-listings");
+
+        try {
+            let response = await fetch("/api/chat");
+            let data = await response.json();
+
+            if (data.chat_history && data.chat_history.length > 0) {
+                data.chat_history.forEach(chat => {
+                    displayMessage("You", chat.user_input, "user-message");
+
+                    if (!chat.chat_output || chat.chat_output.trim() === "") {
+                        // Handle AI response errors (Yellow Warning)
+                        let botErrorElement = document.createElement("div");
+                        botErrorElement.classList.add("message", "ai-message", "text-warning");
+                        botErrorElement.innerHTML = `<strong>JobBot:</strong> ⚠ Error occurred while retrieving chat history.`;
+                        chatContainer.appendChild(botErrorElement);
+                    } else {
+                        displayMessage("JobBot", chat.chat_output, "ai-message");
+                    }
+
+                    // Handle job listings in chat history
+                    if (chat.jobListing && chat.jobListing.length > 0) {
+                        updateJobListings(chat.jobListing);
+                    } else {
+                        jobListingsContainer.innerHTML = `
+                            <div class="text-center text-warning">
+                                <p><em>⚠ No jobs found based on your search. Try refining your query!</em></p>
+                            </div>
+                        `;
+                    }
+                });
+            } else {
+                displayMessage("JobBot", "Hello! I am JobBot, your AI assistant for job recommendations and resume feedback. How can I help you today?", "ai-message");
+            }
+        } catch (error) {
+            console.error("Error loading chat history:", error);
+
+            // Display AI error message in chat
+            let botErrorElement = document.createElement("div");
+            botErrorElement.classList.add("message", "ai-message", "text-warning");
+            botErrorElement.innerHTML = `<strong>JobBot:</strong> ⚠ Error occurred while loading chat history. Please try again later.`;
+            chatContainer.appendChild(botErrorElement);
+
+            // Display job listings error message
+            jobListingsContainer.innerHTML = `
+                <div class="text-center text-warning">
+                    <p><em>⚠ No jobs found based on your search. Try refining your query!</em></p>
+                </div>
+            `;
+        }
+
+    }
+
+    function displayMessage(sender, text, className) {
+        let chatContainer = document.getElementById("chat-container");
+        let messageElement = document.createElement("div");
+        messageElement.classList.add("message", className);
+        messageElement.innerHTML = `<strong>${sender}:</strong> ${marked.parse(text)}`;
+        chatContainer.appendChild(messageElement);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function updateJobListings(jobListings) {
+        let jobListingsContainer = document.getElementById("job-listings");
+        jobListingsContainer.innerHTML = "";
+
+        jobListings.slice(0, 10).forEach(job => {
+            let jobEntry = document.createElement("div");
+            jobEntry.classList.add("job-entry");
+
+            // Extract and format location details
+            let location = "Not specified";
+            if (job.locations_raw && job.locations_raw.length > 0) {
+                let loc = job.locations_raw[0].address; // Get first location object
+                let addressCountry = loc.addressCountry || "";
+                let addressLocality = loc.addressLocality || "";
+                let addressRegion = loc.addressRegion || "";
+
+                // Format the location string properly
+                location = `${addressLocality ? addressLocality + ", " : ""}${addressRegion ? addressRegion + ", " : ""}${addressCountry}`.replace(/, $/, ""); 
+            }
+
+            // Convert and format dates to user's local timezone
+            function formatDateToLocal(isoString) {
+                if (!isoString) return "Not specified";
+                let date = new Date(isoString);
+                return date.toLocaleString(undefined, { 
+                    year: "numeric", 
+                    month: "long", 
+                    day: "numeric", 
+                    hour: "2-digit", 
+                    minute: "2-digit", 
+                    second: "2-digit", 
+                    timeZoneName: "short" 
+                });
+            }
+
+            let formattedPostedDate = formatDateToLocal(job.date_posted);
+
+            jobEntry.innerHTML = `
+                <div class="job-listing" style="padding: 18px; border-radius: 10px; background: #FFFFFF; box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.08); margin-bottom: 20px;">
+                    <h5 class="job-title" style="margin-bottom: 10px; font-size: 18px; font-weight: 600; color: #252525;">
+                        <a href="${job.url}" target="_blank" style="text-decoration: none; color: #007BFF;">${job.title}</a>
+                    </h5>
+                    <p style="margin-bottom: 5px;"><strong>Company:</strong> ${job.organization || "Not specified"}</p>
+                    <p style="margin-bottom: 5px;"><strong>📍 Location:</strong> ${location}</p>
+                    <p style="margin-bottom: 5px;"><strong>💼 Employment Type:</strong> ${job.employment_type ? job.employment_type.join(", ") : "Not specified"}</p>
+                    <p style="margin-bottom: 5px;"><strong>📅 Posted:</strong> ${formattedPostedDate}</p>
+                    <p style="margin-bottom: 5px;"><strong>🏢 Industry:</strong> ${job.linkedin_org_industry || "Not specified"}</p>
+                    <p style="margin-bottom: 10px;"><strong>💰 Salary:</strong> ${job.salary_raw || "Not specified"}</p>
+                </div>
+            `;
+
+            jobListingsContainer.appendChild(jobEntry);
+        });
+    }
+
+    async function sendMessage() {
+        let userInput = document.getElementById("user-input").value.trim();
+        let chatContainer = document.getElementById("chat-container");
+        let jobListingsContainer = document.getElementById("job-listings");
+
+        if (userInput === "") return;
+
+        displayMessage("You", userInput, "user-message");
+        document.getElementById("user-input").value = "";
+
+        // Show the bot is typing
+        let typingElement = document.createElement("div");
+        typingElement.classList.add("message", "ai-message", "typing");
+        typingElement.innerHTML = "JobBot is preparing response...";
+        chatContainer.appendChild(typingElement);
+
+        // Show loading message in the job listings section
+        jobListingsContainer.innerHTML = `
+            <div class="text-center text-secondary">
+                <p><em>🔍 Searching for job opportunities...</em></p>
+            </div>
+        `;
+
+        let formData = new FormData();
+        formData.append("prompt", userInput);
+
+        try {
+            let response = await fetch("/api/chat", {
+                method: "POST",
+                body: formData,
+                credentials: "same-origin"
+            });
+
+            let data = await response.json();
+            chatContainer.removeChild(typingElement);
+
+            if (data.error || !data.ai_response) {
+                // AI Response Error Handling
+                let errorMessage = "⚠ Error occurred, please try again later or upload a different resume that might be more valid.";
+                let botErrorElement = document.createElement("div");
+                botErrorElement.classList.add("message", "ai-message", "text-warning");
+                botErrorElement.innerHTML = `<strong>JobBot:</strong> ${errorMessage}`;
+                chatContainer.appendChild(botErrorElement);
+            } else {
+                // Display AI Response Normally
+                displayMessage("JobBot", data.ai_response, "ai-message");
+            }
+
+            if (data.job_listings && data.job_listings.length > 0) {
+                updateJobListings(data.job_listings);
+            } else {
+                jobListingsContainer.innerHTML = `
+                    <div class="text-center text-warning">
+                        <p><em>⚠ No jobs found based on your search. Try refining your query!</em></p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error("Error sending message:", error);
+            chatContainer.removeChild(typingElement);
+
+            // Display AI Error in Yellow
+            let botErrorElement = document.createElement("div");
+            botErrorElement.classList.add("message", "ai-message", "text-warning");
+            botErrorElement.innerHTML = `<strong>JobBot:</strong> ⚠ Error occurred, please try again later or upload a different resume that might be more valid.`;
+            chatContainer.appendChild(botErrorElement);
+
+            jobListingsContainer.innerHTML = `
+                <div class="text-center text-danger">
+                    <p><em>❌ Failed to fetch job listings. Please try again.</em></p>
+                </div>
+            `;
+        }
+    }
+
+    async function uploadFile() {
+        let fileInput = document.getElementById("file-input");
+        let messageArea = document.getElementById("file-upload-messaging");
+
+        // Clear previous messages
+        messageArea.textContent = "";
+        messageArea.className = "text-center mt-2";
+
+        // Ensure a file is selected
+        if (fileInput.files.length === 0) {
+            messageArea.textContent = "Please select a file before uploading.";
+            messageArea.classList.add("text-danger");
+            return;
+        }
+
+        let formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        try {
+            let response = await fetch("/api/chatUpload", {
+                method: "POST",
+                body: formData,
+                credentials: "same-origin",
+            });
+
+            let data = await response.json();
+
+            if (response.ok) {
+                // Show the exact success message from Django
+                messageArea.textContent = data.success;
+                messageArea.classList.remove("text-danger");
+                messageArea.classList.add("text-success");
+
+                // Refresh the page after a short delay
+                setTimeout(() => {
+                    location.reload();
+                }, 600); // 1-second delay for better UX
+            } else {
+                // Show the exact error message from Django
+                messageArea.textContent = data.error || "An unknown error occurred.";
+                messageArea.classList.remove("text-success");
+                messageArea.classList.add("text-danger");
+            }
+        } catch (error) {
+            console.error("File Upload Error:", error);
+            messageArea.textContent = "Failed to upload file. Try again.";
+            messageArea.classList.remove("text-success");
+            messageArea.classList.add("text-danger");
+        }
+    }
+
+    document.getElementById("user-input").addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            sendMessage();
+        }
+    });
+
+    async function clearChatHistory() {
+        try {
+            let response = await fetch("/api/chatUpload", {
+                method: "GET",
+                credentials: "same-origin"
+            });
+
+            let data = await response.json();
+
+            if (response.ok) {
+                alert(data.success || "Chat history cleared successfully.");
+                window.location.reload();  // Reload only on success
+            } else {
+                alert(data.error || "Failed to clear chat history.");
+            }
+        } catch (error) {
+            console.error("Error clearing chat history:", error);
+            alert("An error occurred while clearing chat history.");
+        }
+    }
+</script>
+{% else %}
+<!-- Intro Page for Unsigned Users -->
+<div class="content-wrapper" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 80px 20px; margin-top: 0px;">
+    <h2 class="intro-title" style="font-size: 34px; font-weight: 700; color: #252525; margin-bottom: 20px;">
+        Welcome to SkillFlowAI
+    </h2>
+    
+    <p class="intro-description" style="font-size: 20px; color: #444; max-width: 800px; text-align: center; line-height: 1.6; margin-bottom: 20px;">
+        SkillFlowAI is an AI-powered job-matching platform designed to help you find the best job opportunities. 
+        Using your resume and AI-driven chatbot, we provide personalized job recommendations, career advice, 
+        and feedback to help you succeed.
+    </p>
+
+    <p class="intro-description" style="font-size: 20px; color: #444; max-width: 800px; text-align: center; line-height: 1.6; margin-bottom: 40px;">
+        Upload your resume and chat with our AI assistant to discover job listings tailored to your skills and interests.
+    </p>
+
+    <div class="intro-btns" style="display: flex; justify-content: center; gap: 20px;">
+        <a href="{% url 'login' %}" class="btn btn-primary" style="padding: 12px 24px; font-size: 18px; border-radius: 8px;">Login</a>
+        <a href="{% url 'register' %}" class="btn btn-success" style="padding: 12px 24px; font-size: 18px; border-radius: 8px;">Get Started</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

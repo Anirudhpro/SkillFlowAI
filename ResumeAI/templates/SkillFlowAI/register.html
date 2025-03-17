@@ -1,0 +1,56 @@
+{% extends "SkillFlowAI/layout.html" %}
+{% load static %}
+
+{% block headers %}
+    <link rel="stylesheet" href="{% static 'SkillFlowAI/styles.css' %}">
+    <style>
+        @media screen and (max-width: 500px) {
+            .registerForm {
+                margin-left: 20px;
+                margin-right: 20px;
+            }
+        }
+        @media screen and (min-width: 501px) {
+            .registerForm {
+                margin-left: calc((100% - 500px)/2);
+                width: 500px; 
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-center align-items-center min-vh-90" style="margin-top: 180px;">
+    <div class="card p-5 shadow-lg" style="border-radius: 12px; width: 420px; height: 600px;">
+        <div class="card-body text-center d-flex flex-column justify-content-center">
+            <h2 class="mb-4" style="color: #252525; font-size: 24px; font-weight: 600;">Register</h2>
+            {% if error %}
+                <p class="text-danger">{{ error }}</p>
+            {% endif %}
+            <form action="register" method="POST">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <input type="text" class="form-control" name="username" placeholder="Email"
+                        value="{{ email }}" required 
+                        style="background: #FFFFFF; color: #252525; border: 1px solid #CCCCCC; padding: 14px; font-size: 16px;">
+                </div>
+                <div class="mb-4">
+                    <input type="password" class="form-control" name="password" placeholder="Password" required
+                        style="background: #FFFFFF; color: #252525; border: 1px solid #CCCCCC; padding: 14px; font-size: 16px;">
+                </div>
+                <div class="mb-4">
+                    <input type="password" class="form-control" name="confirmation" placeholder="Confirm Password" required
+                        style="background: #FFFFFF; color: #252525; border: 1px solid #CCCCCC; padding: 14px; font-size: 16px;">
+                </div>
+                <button type="submit" class="btn w-100 text-white"
+                    style="background-color: #252525; border-radius: 6px; padding: 16px; font-weight: 600; font-size: 16px;">
+                    Create Account
+                </button>
+            </form>
+            <p class="mt-4" style="color: #252525; font-size: 14px;">
+                Already have an account? <a href="/login" style="color: #252525; font-weight: 500; text-decoration: underline;">Login here</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,83 @@
+
+html {
+    scroll-behavior: smooth;
+}
+* {
+    font-family: Helvetica, monospace;
+
+}
+div, p {
+    font-family: Helvetica, monospace;
+}
+
+h1, h2, h3, h4, h5, h6, p, a, span, div {
+    word-wrap: break-word;
+    flex-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+    font-family: Futura;
+}
+input, textarea, select { 
+    font-family:inherit; 
+}
+
+.center {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: auto;
+  }
+
+.form-control, input::placeholder, textarea::placeholder, input, textarea, select {
+    font-family: Helvetica, monospace;
+}
+
+.spacing {
+    padding-bottom: 10px;
+}
+
+.hs {
+    display: grid;
+    grid-gap: 100px;
+    grid-template-columns: repeat(6, calc(50% - var(--gutter) * 2));
+    grid-template-rows: minmax(160px, 25%);
+    
+    overflow-x: scroll;
+    scroll-snap-type: x proximity;
+    padding-bottom: calc(.75 * var(--gutter));
+    margin-bottom: calc(-.25 * var(--gutter));
+}
+
+:root {
+    --gutter: 20px;
+}
+
+.hs > div,
+.accItem {
+  scroll-snap-align: center;
+  padding: calc(var(--gutter) / 2 * 1.5);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #fff;
+  border-radius: 8px;
+}
+
+@media only screen and (max-width: 1000px) {
+    .hs {
+        grid-gap: 500px;
+    }
+}
+
+@media only screen and (min-width: 1250px) {
+    .hs {
+        grid-gap: 50px;
+    }
+}
+
+@media only screen and (max-width: 400px) {
+    * {
+        white-space: nowrap;
+    }
+}
