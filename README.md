@@ -43,3 +43,6 @@ You must have an API key that has access to the OPENAI API. You can export this 
 You must also have a rapid API key for linked in job database. You will have to insert that API key into views.py where it says RAPIDAPI_KEY = "insert API Key Here"
 
 You can go to the working directory of the django project and run "python(3) manage.py runserver" if you want to see how the project works.
+
+## Project Video
+[Link to project youtube video](https://youtu.be/6Aq0r1O84kg)
