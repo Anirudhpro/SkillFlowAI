@@ -36,3 +36,10 @@ SkillFlowAI is an AI-powered job-matching platform that's designed to simplify y
 - **Expanding job sources:** Provide a larger array of listings than that of the current API used
 - **System of saving opportunities:** Save/bookmark job opportunities and use this information to increase the catering of AI responses with relevant job opportunities
 - **Using data:** using data collected from users to improve and cater an AI model just for finding jobs
+
+## Procedure to run project
+You must have an API key that has access to the OPENAI API. You can export this key in the working directory with export OPEN_AI_KEY=sk-...
+
+You must also have a rapid API key for linked in job database. You will have to insert that API key into views.py where it says RAPIDAPI_KEY = "insert API Key Here"
+
+You can go to the working directory of the django project and run "python(3) manage.py runserver" if you want to see how the project works.
