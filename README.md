@@ -2,7 +2,7 @@
 SkillsFlowAI is an AI-driven job-matching platform that analyzes your resume and chat messages to recommend tailored job opportunities. JobBot's assistance will help you find your ideal role!
 
 ## Inspiration
-Searching for summer jobs is extremely frustrating for me. No matter where I looked, I struggled to find positions that matched my resume and interests. The filters on job sites were time-consuming to index through and were often very inefficient. I wasted time scrolling through posts that were irrelevant to me. I realized that in today's job market, getting accepted to a job that matches your skills, passions, and preferences is very hard.
+Searching for jobs can be very frustrating. I found this to be true myself. The filters on job sites were time-consuming to index through and were often very inefficient. I wasted time scrolling through posts that were irrelevant to me. I realized that in today's job market, getting accepted to a job that matches your skills, passions, and preferences is very hard.
 
 I built SkillsFlowAI to solve this problem. Instead of navigating through endless listings, this AI-powered platform will deliver instant, precise job recommendations that will truly align with what you're looking for. Focus on what's available and avoid wasting time by preventing searches for what never existed!
 
